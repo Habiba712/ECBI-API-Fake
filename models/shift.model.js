@@ -1,6 +1,6 @@
+const mongoose = require('mongoose'); // Assurez-vous que mongoose est importé correctement
 
-
-const mongoose = require('mongoose');
+const Schema = mongoose.Schema;
 
 const WeeklyScheetSchema = new mongoose.Schema({
   dayname: {
@@ -27,9 +27,9 @@ const WeeklyScheetSchema = new mongoose.Schema({
         required: true
       },
       duréeDeReservation: {
-               type: Number,  // En minutes : 30 pour 30 minutes, 60 pour 1 heure, etc.
-                required: true
-              },
+        type: Schema.Types.Mixed,  // Allows both number and string
+        required: true
+      }
     }
   ],
  

@@ -171,7 +171,7 @@ WeeklyScheetController.getAllWeeklyScheets = async (req, res) => {
     res.json({ message: "Erreur lors de la récupération des cartes d'horaires", error });
   }
 };
-
+  
 // Créer une nouvelle carte d'horaires
 WeeklyScheetController.createWeeklyScheet = async (req, res) => {
   const { dayname, isopen, shifts} = req.body;
@@ -197,7 +197,7 @@ WeeklyScheetController.createWeeklyScheet = async (req, res) => {
 // Mettre à jour une carte d'horaires
 WeeklyScheetController.updateWeeklyScheet = async (req, res) => {
   const { id } = req.params;
-  const { dayname, isopen, shifts} = req.body;
+  const { dayname, isopen, shifts } = req.body;
 
   try {
     const weeklyScheet = await WeeklyScheet.findById(id);
@@ -205,27 +205,36 @@ WeeklyScheetController.updateWeeklyScheet = async (req, res) => {
       return res.json({ message: "WeeklyScheet non trouvée" });
     }
 
-    // Mettre à jour les champs globaux
-    if (dayname !== undefined) weeklyScheet.dayname = dayname;
-    if (isopen !== undefined) weeklyScheet.isopen = isopen;
-    // if (reservationInterval !== undefined) weeklyScheet.reservationInterval = reservationInterval;
-    // if (maxPeoplePerInterval !== undefined) weeklyScheet.maxPeoplePerInterval = maxPeoplePerInterval;
-
-    // Mettre à jour les shifts
-    if (shifts) {
-      shifts.forEach(newShift => {
-        const existingShift = weeklyScheet.shifts.id(newShift._id);
-        if (existingShift) {
-          existingShift.name = newShift.name || existingShift.name;
-          existingShift.openingTime = newShift.openingTime || existingShift.openingTime;
-          existingShift.closingTime = newShift.closingTime || existingShift.closingTime;
-          existingShift.duréeDeReservation = newShift.duréeDeReservation || existingShift.duréeDeReservation;
-        } else {
-          weeklyScheet.shifts.push(newShift);
-        }
-      });
+    // Forcer la mise à jour du jour (dayname) uniquement s'il est modifié
+    if (dayname !== undefined) {
+      console.log("Mise à jour du dayname:", dayname); // Debug pour vérifier
+      weeklyScheet.dayname = dayname;
     }
 
+    if (isopen !== undefined) {
+      weeklyScheet.isopen = isopen;
+    }
+
+    // Mettre à jour les shifts
+    if (shifts && Array.isArray(shifts)) {
+      for (const newShift of shifts) {
+        if (newShift._id) {
+          // Si un shift existe déjà, on le met à jour
+          const existingShift = weeklyScheet.shifts.id(newShift._id);
+          if (existingShift) {
+            existingShift.name = newShift.name || existingShift.name;
+            existingShift.openingTime = newShift.openingTime || existingShift.openingTime;
+            existingShift.closingTime = newShift.closingTime || existingShift.closingTime;
+            existingShift.duréeDeReservation = newShift.duréeDeReservation || existingShift.duréeDeReservation;
+          }
+        } else {
+          // Si le shift est nouveau, on l'ajoute
+          weeklyScheet.shifts.push(newShift);
+        }
+      }
+    }
+
+    // Sauvegarder l'objet mis à jour
     await weeklyScheet.save();
     res.status(200).json(weeklyScheet);
   } catch (error) {
@@ -252,7 +261,7 @@ WeeklyScheetController.addShift = async (req, res) => {
       name,
       openingTime,
       closingTime,
-      duréeDeReservation
+      duréeDeReservation,
     };
 
     scheet.shifts.push(newShift);
@@ -285,26 +294,5 @@ WeeklyScheetController.deleteShift = async (req, res) => {
   }
 };
 
-// WeeklyScheetController.updateReservationSettings = async (req, res) => {
-//   const { reservationInterval, maxPeoplePerInterval } = req.body;
-
-//   try {
-//     // Validation des entrées
-//     if (reservationInterval === undefined || maxPeoplePerInterval === undefined) {
-//       return res.json({ message: "Les deux champs 'reservationInterval' et 'maxPeoplePerInterval' sont requis." });
-//     }
-
-//     // Mettre à jour tous les WeeklyScheets avec les nouvelles valeurs
-//     const updatedScheets = await WeeklyScheet.updateMany(
-//       {}, // Critère vide pour mettre à jour tous les documents
-//       { reservationInterval, maxPeoplePerInterval }, // Nouvelles valeurs
-//       { new: true }
-//     );
-
-//     res.status(200).json({ message: "Paramètres de réservation mis à jour pour toutes les feuilles d'horaires", updatedScheets });
-//   } catch (error) {
-//     res.json({ message: "Erreur lors de la mise à jour des paramètres", error });
-//   }
-// };
 
 module.exports = WeeklyScheetController;

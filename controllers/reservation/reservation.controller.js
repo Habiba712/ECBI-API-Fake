@@ -2,15 +2,50 @@ const Reservation = require("../../models/reservation.model");
 const WeeklyScheet = require('../../models/shift.model');
 const GlobalSettings = require('../../models/setting.model');
 const moment = require('moment');
+const dayjs = require('dayjs');
 
 
 const reservationController = {};
-
+ // Get current time
+ const today = dayjs().startOf('day'); // Start of today for comparison
+ const currentTime = dayjs();
 // Function to get the day of the week
 const getDayOfWeek = (dateString) => {
   const date = new Date(dateString);
   const days = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
   return days[date.getDay()];
+};
+
+
+
+
+reservationController.updateReservationStatus = async (req, res) => {
+  const { id } = req.params; // Reservation ID passed as a URL parameter
+  const { status } = req.body; // Status field passed in the request body
+console.log('ststus', status)
+  if (!status) {
+    return res.status(400).json({ message: 'Status is required to update reservation' });
+  }
+
+  try {
+    // Find the reservation by ID and update only the status field
+    const reservation = await Reservation.findByIdAndUpdate(
+      id,
+      { status },
+      {
+        new: true,          // Return the updated document
+        runValidators: true // Ensure validation is run on the update
+      }
+    );
+
+    if (!reservation) {
+      return res.status(404).json({ message: 'Reservation not found' });
+    }
+
+    res.status(200).json(reservation);
+  } catch (error) {
+    res.status(500).json({ message: 'Error updating reservation status', details: error.message });
+  }
 };
 
 reservationController.getReservations = async (req, res) => {
@@ -39,6 +74,58 @@ reservationController.getReservations = async (req, res) => {
   }
 };
 
+// reservationController.getReservationById = async (req, res) => {
+//   const { id } = req.params; // Get the reservation ID from the request parameters
+
+//   try {
+//     // Find the reservation by its ID and populate related "table" and "shift" details
+//     const reservation = await Reservation.findById(id).populate("table");
+
+//     if (!reservation) {
+//       return res.json({ message: "Reservation not found" });
+//     }
+
+//     // Populate shift details from WeeklyScheet
+//     const scheet = await WeeklyScheet.findOne({ "shifts._id": reservation.shiftId });
+//     const shift = scheet ? scheet.shifts.id(reservation.shiftId) : null;
+
+//     // Add shift details to the reservation object
+//     const populatedReservation = {
+//       ...reservation.toObject(),
+//       shift: shift ? {
+//         _id: shift._id,
+//         name: shift.name,
+//         openingTime: shift.openingTime,
+//         closingTime: shift.closingTime,
+//       } : null
+//     };
+
+//     res.json(populatedReservation);
+//   } catch (err) {
+//     res.status(500).json({
+//       error: 'Failed to fetch reservation',
+//       details: err.message
+//     });
+//   }
+// };
+
+
+reservationController.getReservationById = async (req, res) => {
+  try {
+    const { id } = req.params; // Récupération de l'identifiant de la réservation
+    const reservation = await Reservation.findById(id); // Trouver la réservation et peupler la table associée
+
+    if (!reservation) {
+      return res.json({ error: "Réservation non trouvée" });
+    }
+
+    res.status(200).json(reservation);
+  } catch (err) {
+    res.json({ error: "Erreur lors de la récupération de la réservation", details: err.message });
+  }
+};
+
+
 
 //CHANGEMENT
 
@@ -61,6 +148,7 @@ reservationController.createReservation = async (req, res) => {
     }
     const { reservationInterval, maxPeoplePerInterval } = globalSettings;
     console.log("Retrieved Reservation Interval:", reservationInterval);
+    console.log("Retrieved Reservation Interval:", maxPeoplePerInterval);
 
     // Trouver le WeeklyScheet correspondant au jour
     const scheet = await WeeklyScheet.findOne({ dayname: selectedDay });
@@ -93,6 +181,24 @@ reservationController.createReservation = async (req, res) => {
       'minutes'
     );
     const intervalEnd = intervalStart.clone().add(reservationInterval, 'minutes');
+    // Check if requested time is in the future or is now
+    // if (inputDate.isSame(today, 'day') && requestedTime.isBefore(currentTime)) {
+    //   return res.status(400).json({ message: "Reservation time must be now or in the future." });
+    // }
+
+    // const intervalStart = openingTime.clone().add(Math.floor(requestedTime.diff(openingTime, 'minutes') / reservationInterval) * reservationInterval, 'minutes');
+    // // Calculer le créneau correspondant pour `requestedTime`
+    
+    // const intervalEnd = intervalStart.clone().add(reservationInterval, 'minutes');
+
+
+if (inputDate.isSame(today, 'day') && requestedTime.isBefore(currentTime)) {
+  return res.status(400).json({ message: "Reservation time must be now or in the future." });
+}
+
+
+
+
 
     // Compter le nombre total de personnes déjà réservées dans cet intervalle
     const peopleAlreadyReserved = await Reservation.aggregate([
@@ -112,7 +218,7 @@ reservationController.createReservation = async (req, res) => {
     ]);
 
     const totalPeopleReserved = peopleAlreadyReserved.length > 0 ? peopleAlreadyReserved[0].totalPeople : 0;
-
+console.log('total',totalPeopleReserved,'people count',peopleCount,'maxPeople',maxPeoplePerInterval)
     // Vérifier si le nombre total de personnes dépasse `maxPeoplePerInterval`
     if (totalPeopleReserved + peopleCount > maxPeoplePerInterval) {
       return res.status(400).json({ message: `Cannot create reservation: maximum people for this interval reached.` });
@@ -134,7 +240,7 @@ reservationController.createReservation = async (req, res) => {
     res.status(201).json({ success: true, data: reservation });
   } catch (err) {
     console.error('Error details:', err);
-    res.status(500).json({ error: 'Failed to create reservation', details: err.message });
+    res.json({ error: 'Failed to create reservation', details: err.message });
   }
 };
 
