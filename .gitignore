@@ -36,9 +36,14 @@ node_modules
 
 .idea
 
-.env
+
 
 yarn.lock
 
 package-lock.json
+
+
+
+
+
 .vercel
