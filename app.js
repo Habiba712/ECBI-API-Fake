@@ -1,27 +1,53 @@
 const express = require('express');
 const mongoose = require('mongoose');
+ 
 const bodyParser = require('body-parser');
 const logger = require('morgan');
 const passport = require('passport');
 const cors = require('cors');
  const path = require('path');
+ const { io } = require('socket.io-client');
+ const { fetchAndSendData } = require('./syncData');
+ const socket = io('https://8cf7-41-248-68-42.ngrok-free.app');
+ // in order to create a google scheet
+
+
+ socket.on('connect', () => {
+    console.log('Connected to the Socket.IO server:', socket.id);
+  });
+  
+  socket.on('newReservation', (data) => {
+    console.log('New reservation broadcasted:', data);
+  });
+  
+   function emitNewReservation(reservationData) {
+    socket.emit('newReservation', reservationData);
+    
+}
+
+module.exports = { emitNewReservation };
+
+
 const apiRouter = require('./routes/index.routes');
 require('./config/passport')(passport);
 const app = express();
-
+// require('../config/socketServer'); 
 let isProduction = process.env.NODE_ENV === "production";
-app.use('/media/images', express.static(path.join('./media/images')));
- 
+app.use('/api/media/images', express.static(path.join('./media/images')));
 
-//-------------- DB Config --------------//
+ //-------------- DB Config --------------//
 mongoose.connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useCreateIndex: true,
-    useUnifiedTopology: true 
+    // serverSelectionTimeoutMS: 50000,
+    // useNewUrlParser: true,
+    //  useUnifiedTopology: true
+
 });
 
 mongoose.connection.on('connected', () => {
     console.log('database connected successfully');
+    // setInterval(() => {
+    //     fetchAndSendData();
+    //   }, 3000);
 });
 mongoose.connection.on('error', (err) => {
     console.error(`Failed to connect to the database: ${err}`);
@@ -54,9 +80,18 @@ app.use(bodyParser.urlencoded({ limit: '20mb', extended: true }));
 
 app.use(passport.initialize());
 
-//-------------- Routes --------------//
-app.use('/', apiRouter);
 
+
+
+
+
+//-------------- Routes --------------//
+app.use('/api', apiRouter);
+app.use((req, res, next) => {
+    req.io = io; // Attach the Socket.IO instance to the request object
+    next();
+  });
+  
 //-------------- ERRORS --------------//
 app.use((req, res, next) => {
     let err = new Error('Not Found');
@@ -69,8 +104,41 @@ app.use((err, req, res, next) => {
     const message = err.message || 'Error processing your request';
     res.status(status).send({ message });
 });
+app.get('/', (req, res) => {
+    res.send('Hello from Vercel!');
+  });
 
-module.exports = app;
+
+//   let server;
+// const PORT = 4000;
+//       server = http.createServer(app);
+  
+//       // Initialize WebSocket server
+//       const io = new Server(server, {
+//           cors: {
+//               origin: '*',
+//               methods: ['GET', 'POST'],
+//           },
+//       });
+  
+//       io.on('connection', (socket) => {
+//           console.log('A client connected');
+  
+//           // Example: Listen for a custom event from the client
+//           socket.on('message', (data) => {
+//               console.log('Received message:', data);
+//               socket.emit('response', { message: 'Message received' });
+//           });
+  
+//           socket.on('disconnect', () => {
+//               console.log('A client disconnected');
+//           });
+//       });
+  
+//       // Start listening
+//       server.listen(PORT, () => {
+//           console.log(`Server running on http://localhost:${PORT}`);
+//       });
 
 
 // const express = require('express');
@@ -147,3 +215,5 @@ module.exports = app;
 
 // module.exports = app;
 
+
+module.exports = app;

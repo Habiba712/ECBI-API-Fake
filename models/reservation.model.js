@@ -13,20 +13,20 @@ const ReservationSchema = new mongoose.Schema({
     trim: true,
     default: ''
   },
+  // time:{
+  //   type:String,
+  //   required:false
+  // },
   date: {
-    type: String,
+    type: Date,
     required: true,
-    trim: true,
+   
   },
-  time: {
-    type: String,
-    required: true,
-    trim: true,
-  },
-  table: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Table"
-  },
+  
+  // table: {
+  //   type: mongoose.Schema.Types.ObjectId,
+  //   ref: "Table"
+  // },
   phone: {
     type: String,
     required: false
@@ -34,28 +34,31 @@ const ReservationSchema = new mongoose.Schema({
   email: {
     type: String,
     lowercase: true,
-    unique: true,
+  
     required: [false, "can't be blank"],
+  
+  
     match: [/\S+@\S+\.\S+/, 'is invalid'],
-    index: true
+  
   },
   shiftId:
-    { type: mongoose.Schema.Types.ObjectId } // Make sure this is correct
-
-
-
+    { type: mongoose.Schema.Types.ObjectId } 
   ,
-  peopleCount: {  // Nombre de personnes dans la réservation
+  peopleCount: {  
     type: Number,
     required: true
   },
   status: {
     type: String,
     required: true,
-    enum: ["enregistré", "Annulé", "en attente", "Arrivé", "Départ", "No show"],
+    enum: ["enregistré", "Annulé", "en attente", "Arrivé", "Départ", "No show","checked in"],
     default: "en attente"
-    // Days of the week
-  }
+  },
+  pointDeVente: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'PointDeVente', // Reference the PointDeVente collection
+    required: true, // Make it required if every reservation must belong to a PointDeVente
+  },
 }, {
   timestamps: true,
 });
