@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
-const RestaurantSchema = new mongoose.Schema({
-  
+const PointDeVenteSchema = new mongoose.Schema({
+
   website: {
     type: String,
     required: true,
@@ -11,18 +11,9 @@ const RestaurantSchema = new mongoose.Schema({
     type: String,
     required: true,
     trim: true,
-    default:'resto duh'
+    default: ''
   },
-  telephone: {
-    type: String,
-    required: false,
-    trim: true,
-  },
-  email: {
-    type: String,
-    required: true,
-    trim: true,
-  },
+ 
   state: {
     type: String,
     enum: ['blocked', 'actif'],
@@ -36,9 +27,9 @@ const RestaurantSchema = new mongoose.Schema({
     required: true,
   },
 }, {
-  timestamps: true, 
+  timestamps: true,
 });
 
-const Restaurant = mongoose.model('Restaurant', RestaurantSchema);
+const PointDeVente = mongoose.model('PointDeVente', PointDeVenteSchema);
 
-module.exports = Restaurant;
+module.exports = PointDeVente;

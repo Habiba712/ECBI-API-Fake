@@ -4,27 +4,56 @@ const mongoose = require('mongoose');
 
 const userController = {};
 
-// Création d'un utilisateur
+const PointDeVente = require('../../models/pointdevente.model');
 userController.createUser = async (req, res, next) => {
     try {
-        const { username, email, password, role } = req.body;
+        const { email, password, pointOfSale, role, telephone, username } = req.body;
 
-        // Hash the password before saving
-        const hashedPassword = await bcrypt.hash(password, 10);
+        // Check if user with the provided email already exists
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            return res.json({ success: false, message: 'User with this email already exists.' });
+        }
 
+        // Find the PointDeVente based on the string (pointOfSale)
+        const pointDeVente = await PointDeVente.findOne({ name: pointOfSale }); // Assuming 'name' is the identifier
+        if (!pointDeVente) {
+            return res.json({ success: false, message: 'Point of sale not found.' });
+        }
+
+        // Create a new user with the PointDeVente ID
         const newUser = new User({
-            username,
             email,
-            password: hashedPassword,
-            role
+            password: await bcrypt.hash(password, 10), // Hash the password
+            telephone,
+            role,
+            pointOfSale: pointDeVente._id, // Store the PointDeVente ID
+            username
         });
 
-        const user = await newUser.save();
-        res.status(201).json({ success: true, data: user });
-    } catch (err) {
-        next(err);
+        const savedUser = await newUser.save();
+        res.json({ success: true, data: savedUser });
+    } catch (error) {
+        console.error('Error creating user:', error);
+        res.status(500).json({ success: false, message: 'Failed to create user' });
     }
 };
+
+
+
+userController.getUsers = async (req, res, next) => {
+    try {
+        // Récupère tous les utilisateurs de la base de données
+        const users = await User.find().populate('pointOfSale'); // populate 'pointOfSale' pour inclure les détails du point de vente
+
+        // Renvoie les utilisateurs sous forme de JSON
+        res.json({ success: true, data: users });
+    } catch (error) {
+        console.error('Erreur lors de la récupération des utilisateurs:', error);
+        res.json({ success: false, message: 'Impossible de récupérer les utilisateurs' });
+    }
+};
+
 
 // Mise à jour d'un utilisateur
 userController.updateUser = async (req, res, next) => {
@@ -39,13 +68,12 @@ userController.updateUser = async (req, res, next) => {
         const user = await User.findById(id);
         if (!user) {
             const error = new Error('User not found');
-            error.status = 404;
             return next(error);
         }
 
         if (username) user.username = username;
         if (email) user.email = email;
-        if (password) user.password = await bcrypt.hash(password, 10); // Hash password if provided
+        // if (password) user.password = await bcrypt.hash(password, 10); // Hash password if provided
         if (role) user.role = role;
         if (enabled !== undefined) user.enabled = enabled; // Update enabled status
 
@@ -62,13 +90,12 @@ userController.activateUser = async (req, res, next) => {
         const { id } = req.params;
 
         if (!mongoose.Types.ObjectId.isValid(id)) {
-            return res.status(400).json({ success: false, message: 'Invalid user ID' });
+            return res.json({ success: false, message: 'Invalid user ID' });
         }
 
         const user = await User.findById(id);
         if (!user) {
             const error = new Error('User not found');
-            error.status = 404;
             return next(error);
         }
 

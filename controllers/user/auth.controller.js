@@ -6,12 +6,17 @@ const authController = {};
 authController.login = async (req, res, next) => {
     try {
         const { email, password } = req.body;
-
-        // Find user by email
         const user = await User.findOne({ email });
-        if (!user || !(await user.comparePassword(password))) {
+   
+        // user.password= password
+        // user.save()
+        // return 
+    
+         
+         if (!user || !(await user.comparePassword(password))) {
+            console.log('hashed pass', comparePassword(password))
             const error = new Error('Invalid email or password');
-            error.status = 401;
+           
             return next(error);
         }
 
@@ -25,7 +30,7 @@ authController.login = async (req, res, next) => {
 
         res.json({ success: true, token, role});
     } catch (err) {
-        next(err);
+        console.log('we could not login ');
     }
 };
 
