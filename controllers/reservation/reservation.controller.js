@@ -3,27 +3,16 @@ const WeeklyScheet = require('../../models/shift.model');
 const GlobalSettings = require('../../models/setting.model');
 const Reservation = require('../../models/reservation.model');
 const PointDeVente = require("../../models/pointdevente.model");
- 
-
-const moment = require('moment');
-require('moment/locale/fr'); // Import French locale
-
-// Set the locale globally
-moment.locale('fr');
-
-
+const moment = require('moment'); 
 const dayjs = require('dayjs');
 const { emitNewReservation } = require('../../app');
+
+
+require('moment/locale/fr'); 
+moment.locale('fr');
+ 
 const reservationController = {};
-const today = dayjs().startOf('day'); // Start of today for comparison
-const currentTime = dayjs();
-
-const getDayOfWeek = (dateString) => {
-  const date = new Date(dateString);
-  const days = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
-  return days[date.getDay()];
-};
-
+ 
 
 const ensureIndexRemoved = async () => {
   try {
@@ -92,8 +81,8 @@ reservationController.getReservations = async (req, res) => {
 
 reservationController.getOneReservation = async (req, res) => {
   try {
-    const { id } = req.params; // Récupération de l'identifiant de la réservation
-    const reservation = await Reservation.findById(id); // Trouver la réservation et peupler la table associée
+    const { id } = req.params;  
+    const reservation = await Reservation.findById(id);  
 
     if (!reservation) {
       return res.json({ error: "Réservation non trouvée" });
@@ -110,6 +99,7 @@ reservationController.getOneReservation = async (req, res) => {
  
 
 reservationController.createReservation = async (req, res) => {
+  ensureIndexRemoved()
   console.log('Request body:', req.body);
 
   try {
@@ -163,8 +153,7 @@ reservationController.createReservation = async (req, res) => {
       return res.status(400).json({ message: "Reservations are not allowed on this day." });
     }
 
-    // Fetch the shift details
-    const shift = scheet.shifts.find(s => s.name === shiftName);
+     const shift = scheet.shifts.find(s => s.name === shiftName);
     if (!shift) {
       return res.status(400).json({ message: "Shift not found." });
     }
@@ -226,51 +215,40 @@ reservationController.createReservation = async (req, res) => {
 
 
 
-// reservationController.updateReservation = async (req, res) => {
-//   const { id } = req.params;
-//   const updateData = req.body;
-// console.log('data', updateData)
-//   // Function to format date and time into ISO 8601 format
-//   const formatDateTime = (date, time) => {
-//     const formattedDateTime = new Date(`${date}T${time}:00.000Z`);
-//     return formattedDateTime.toISOString();
-//   };
-// console.log('format', formatDateTime)
-//    if (updateData.date && updateData.time) {
-//     updateData.dateTime = formatDateTime(updateData.date, updateData.time);
-//     delete updateData.date; // Remove raw date field
-//     delete updateData.time; // Remove raw time field
-//   }
-
-//   // Ensure status is always set to "en attente"
-//   updateData.status = "en attente";
-
-//   try {
-//     const reservation = await Reservation.findByIdAndUpdate(
-//       id,
-//       { $set: updateData },
-//       { new: true, runValidators: true }
-//     );
-
-//     if (!reservation) {
-//       return res.json({ message: 'Reservation not found' });
-//     }
-
-//     res.json(reservation);
-//   } catch (error) {
-//     res.json({ message: error.message });
-//   }
-// };
-
 reservationController.updateReservation = async (req, res) => {
-
   const { id } = req.params;
   const updateData = req.body;
-  console.log('updated table', updateData)
-  // updateData.status = "en attente";
+console.log('data', updateData.time, updateData.date)
+  // Function to format date and time into ISO 8601 format
+  const formatDateTime = (date, time) => {
+    const formattedDateTime = new Date(`${date}T${time}:00.000Z`);
+ 
+    const minutes = formattedDateTime.getMinutes();
+    if (minutes === 0) {
+      formattedDateTime.setSeconds(0);
+    } else if (minutes <= 30) {
+      formattedDateTime.setMinutes(30);
+      formattedDateTime.setSeconds(0);
+    } else {
+       formattedDateTime.setHours(formattedDateTime.getHours() + 1);
+      formattedDateTime.setMinutes(0);
+      formattedDateTime.setSeconds(0);
+    }
+     return formattedDateTime.toISOString();
+  };
+   if (updateData.date && updateData.time) {
+    updateData.date = formatDateTime(updateData.date, updateData.time);
+    
+  }
+
+   
 
   try {
-    const reservation = await Reservation.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+    const reservation = await Reservation.findByIdAndUpdate(
+      id,
+      { $set: updateData },
+      { new: true, runValidators: true }
+    );
 
     if (!reservation) {
       return res.json({ message: 'Reservation not found' });
@@ -281,6 +259,25 @@ reservationController.updateReservation = async (req, res) => {
     res.json({ message: error.message });
   }
 };
+
+// reservationController.updateReservation = async (req, res) => {
+
+//   const { id } = req.params;
+//   const updateData = req.body;
+//   console.log('updated table', updateData)
+ 
+//   try {
+//     const reservation = await Reservation.findByIdAndUpdate(id, updateData, { new: true, runValidators: true });
+
+//     if (!reservation) {
+//       return res.json({ message: 'Reservation not found' });
+//     }
+
+//     res.json(reservation);
+//   } catch (error) {
+//     res.json({ message: error.message });
+//   }
+// };
 
 //update reservation status 
 
